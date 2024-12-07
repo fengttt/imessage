@@ -168,31 +168,32 @@ func (m *Messages) checkForNewMessages() {
 
 	sql := `SELECT message.rowid as rowid, handle.id as handle, cache_has_attachments, message.text as text ` +
 		`FROM message INNER JOIN handle ON message.handle_id = handle.ROWID ` +
-		`WHERE is_from_me=0 AND message.rowid > $id ORDER BY message.date ASC`
+		`WHERE is_from_me=0 AND message.rowid > ? ORDER BY message.date ASC`
 
-	query, _, err := dbase.PrepareTransient(sql)
+	rows, err := dbase.Query(sql, m.currentID)
 	if err != nil {
 		return
 	}
+	defer rows.Close()
 
-	query.SetInt64("$id", m.currentID)
+	for rows.Next() {
+		var rowid, cache_has_attachments int64
+		var handle, msg string
 
-	for {
-		if hasRow, err := query.Step(); err != nil {
+		err = rows.Scan(&rowid, &handle, &cache_has_attachments, &msg)
+		if err != nil {
 			m.ErrorLog.Printf("%s: %q\n", sql, err)
-			return
-		} else if !hasRow {
-			m.checkErr(query.Finalize(), "query reset")
 			return
 		}
 
 		// Update Current ID (for the next SELECT), and send this message to the processors.
-		m.currentID = query.GetInt64("rowid")
+		m.currentID = rowid
+
 		m.inChan <- Incoming{
 			RowID: m.currentID,
-			From:  strings.TrimSpace(query.GetText("handle")),
-			Text:  strings.TrimSpace(query.GetText("text")),
-			File:  query.GetInt64("cache_has_attachments") == 1,
+			From:  strings.TrimSpace(handle),
+			Text:  strings.TrimSpace(msg),
+			File:  cache_has_attachments == 1,
 		}
 	}
 }
@@ -207,27 +208,20 @@ func (m *Messages) getCurrentID() error {
 	if err != nil {
 		return err
 	}
-
 	defer m.closeDB(dbase)
 
-	query, _, err := dbase.PrepareTransient(sql)
+	rows, err := dbase.Query(sql)
 	if err != nil {
 		return err
 	}
+	defer rows.Close()
 
-	m.DebugLog.Print("querying current id")
-
-	if hasrow, err := query.Step(); err != nil {
-		m.ErrorLog.Printf("%s: %q\n", sql, err)
-		return err
-	} else if !hasrow {
-		_ = query.Finalize()
+	if !rows.Next() {
 		return ErrNoRows
 	}
 
-	m.currentID = query.GetInt64("id")
-
-	return query.Finalize()
+	rows.Scan(&m.currentID)
+	return nil
 }
 
 // handleIncoming runs the call back funcs and notifies the call back channels.

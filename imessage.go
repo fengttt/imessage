@@ -12,12 +12,13 @@
 package imessage
 
 import (
+    "database/sql"
 	"fmt"
 	"io"
 	"log"
 	"os"
 
-	"crawshaw.io/sqlite"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // Config is our input data, data store, and interface to methods.
@@ -139,11 +140,12 @@ func (m *Messages) Stop() {
 
 // getDB opens a database connection and locks access, so only one reader can
 // access the db at once.
-func (m *Messages) getDB() (*sqlite.Conn, error) {
+func (m *Messages) getDB() (*sql.DB, error) {
 	m.Lock()
 	m.DebugLog.Println("opening database:", m.SQLPath)
 
-	db, err := sqlite.OpenConn(m.SQLPath, sqlite.SQLITE_OPEN_READONLY)
+	// db, err := sql.OpenConn(m.SQLPath, sqlite.SQLITE_OPEN_READONLY)
+	db, err := sql.Open("sqlite3", m.SQLPath)
 	m.checkErr(err, "opening database")
 
 	return db, err //nolint:wrapcheck

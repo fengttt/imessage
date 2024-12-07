@@ -1,8 +1,10 @@
-module golift.io/imessage
+module github.com/fengttt/imessage
 
-go 1.16
+go 1.23.0
 
 require (
-	crawshaw.io/sqlite v0.3.2
-	github.com/fsnotify/fsnotify v1.6.0
+	github.com/fsnotify/fsnotify v1.8.0
+	github.com/mattn/go-sqlite3 v1.14.24
 )
+
+require golang.org/x/sys v0.13.0 // indirect

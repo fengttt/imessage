@@ -1,3 +1,8 @@
+# Port
+
+This is a fork of golift.io/imessage.  Replaced crawshaw.io/sqlite with mattn 
+sqlite-3 driver and use database/sql.
+
 # go-imessage
 
 Go Library used to interact with iMessage (Messages.app) on macOS
